@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  contract:
+    name: Contract — lint + direct tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: genvm-lint check contracts/knockoff_bounty.py
+      - run: pytest tests/direct -v
+
+  frontend:
+    name: Frontend — typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+        env:
+          NEXT_PUBLIC_GENLAYER_RPC_URL: https://studio-next.genlayer.com/api
+          NEXT_PUBLIC_GENLAYER_CHAIN_ID: "61997"
+          NEXT_PUBLIC_CONTRACT_ADDRESS: "0x19eAc0C7Ebdc9821555F515Aa99e342B62a66784"

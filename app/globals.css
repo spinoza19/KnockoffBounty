@@ -1,0 +1,355 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   KnockoffBounty design system
+   Warm sand / ink palette, oversized condensed display type, grain.
+   Light is the "paper" mode, dark is the "press" mode - both are first class.
+   ========================================================================== */
+
+:root {
+  --sand: #a89474;
+  --sand-lift: #b8a687;
+  --ink: #2c2824;
+  --ink-deep: #16130f;
+  --ink-soft: #221e1a;
+
+  --bg: var(--sand);
+  --bg-raised: #b2a083;
+  --bg-sunken: #9c8867;
+  --fg: var(--ink);
+  --fg-muted: #5a5048;
+  --fg-faint: #6f6458;
+  --line: rgba(44, 40, 36, 0.24);
+  --line-strong: rgba(44, 40, 36, 0.55);
+  --accent: #2c2824;
+  --accent-fg: #e8dcc6;
+
+  --verdict-copy: #8c2f1f;
+  --verdict-derivative: #8a5a12;
+  --verdict-independent: #2f5d3a;
+  --verdict-pending: #4a4238;
+
+  --grain-opacity: 0.16;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --gutter: clamp(1rem, 4vw, 4rem);
+}
+
+[data-theme="dark"] {
+  --bg: var(--ink-deep);
+  --bg-raised: var(--ink-soft);
+  --bg-sunken: #100e0b;
+  --fg: #ddcbab;
+  --fg-muted: #9a8b74;
+  --fg-faint: #7c6f5c;
+  --line: rgba(221, 203, 171, 0.2);
+  --line-strong: rgba(221, 203, 171, 0.5);
+  --accent: #d8c49f;
+  --accent-fg: #16130f;
+
+  --verdict-copy: #e0715c;
+  --verdict-derivative: #d9a33f;
+  --verdict-independent: #79b98d;
+  --verdict-pending: #9a8b74;
+
+  --grain-opacity: 0.22;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-raised: var(--bg-raised);
+  --color-sunken: var(--bg-sunken);
+  --color-fg: var(--fg);
+  --color-muted: var(--fg-muted);
+  --color-faint: var(--fg-faint);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --font-display: var(--font-archivo);
+  --font-mono: var(--font-mono-stack);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  background: var(--bg);
+  scroll-behavior: auto;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-mono-stack), ui-monospace, monospace;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-x: clip;
+  transition: background-color 0.5s var(--ease), color 0.5s var(--ease);
+}
+
+::selection {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+/* --- grain + vignette ---------------------------------------------------- */
+.grain {
+  position: fixed;
+  inset: -50%;
+  z-index: 60;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grainShift 0.6s steps(3) infinite;
+  mix-blend-mode: overlay;
+}
+
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-2%, 1%); }
+  66% { transform: translate(1%, -2%); }
+  100% { transform: translate(0, 0); }
+}
+
+@layer components {
+  /* --- typography ---------------------------------------------------------- */
+  .display {
+    font-family: var(--font-archivo), "Arial Narrow", sans-serif;
+    font-weight: 800;
+    text-transform: uppercase;
+    line-height: 0.82;
+    letter-spacing: -0.025em;
+    /* Archivo's variable width axis is what makes the poster proportions;
+       font-stretch is the standard property, the settings line is the fallback
+       for engines that ignore it on a variable face. */
+    font-stretch: 70%;
+    font-variation-settings: "wdth" 70;
+    margin: 0;
+  }
+
+  .display-fill {
+    font-size: clamp(3.2rem, 15.4vw, 17rem);
+    white-space: nowrap;
+  }
+
+  .label {
+    font-family: var(--font-mono-stack), monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+
+  .rule {
+    height: 1px;
+    background: var(--line);
+    width: 100%;
+  }
+
+  /* --- reveal primitives (GSAP targets) ------------------------------------ */
+  .reveal-line {
+    display: block;
+    overflow: hidden;
+  }
+
+  .reveal-line > span {
+    display: block;
+    will-change: transform;
+  }
+
+  .slat {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    z-index: 70;
+    background: var(--ink-deep);
+    pointer-events: none;
+  }
+
+  /* --- shared chrome ------------------------------------------------------- */
+  .shell {
+    padding-inline: var(--gutter);
+  }
+
+  .hairline-top {
+    border-top: 1px solid var(--line);
+  }
+
+  .btn {
+    font-family: var(--font-mono-stack), monospace;
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    padding: 0.85rem 1.4rem;
+    border: 1px solid var(--line-strong);
+    background: transparent;
+    color: var(--fg);
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: color 0.35s var(--ease), border-color 0.35s var(--ease);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+  }
+
+  .btn::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: var(--fg);
+    transform: translateY(101%);
+    transition: transform 0.45s var(--ease);
+    z-index: -1;
+  }
+
+  .btn:hover:not(:disabled) {
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+
+  .btn:hover:not(:disabled)::after {
+    transform: translateY(0);
+  }
+
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-solid {
+    background: var(--fg);
+    color: var(--bg);
+    border-color: var(--fg);
+  }
+
+  .btn-solid::after {
+    background: var(--bg);
+  }
+
+  .btn-solid:hover:not(:disabled) {
+    color: var(--fg);
+  }
+
+  .field {
+    width: 100%;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--line-strong);
+    padding: 0.7rem 0;
+    color: var(--fg);
+    font-family: var(--font-mono-stack), monospace;
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.3s var(--ease);
+  }
+
+  .field:focus {
+    border-color: var(--fg);
+  }
+
+  .field::placeholder {
+    color: var(--fg-faint);
+  }
+
+  textarea.field {
+    resize: vertical;
+    min-height: 5.5rem;
+    line-height: 1.6;
+  }
+
+  /* --- cards --------------------------------------------------------------- */
+  .card {
+    border: 1px solid var(--line);
+    background: color-mix(in srgb, var(--bg-raised) 55%, transparent);
+    transition: border-color 0.4s var(--ease), transform 0.5s var(--ease);
+  }
+
+  .card:hover {
+    border-color: var(--line-strong);
+  }
+
+  /* --- verdict chips ------------------------------------------------------- */
+  .verdict {
+    font-family: var(--font-mono-stack), monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    border: 1px solid currentColor;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  .v-COPY { color: var(--verdict-copy); }
+  .v-DERIVATIVE { color: var(--verdict-derivative); }
+  .v-INDEPENDENT { color: var(--verdict-independent); }
+  .v-INSUFFICIENT_EVIDENCE { color: var(--verdict-pending); }
+  .v-PENDING { color: var(--verdict-pending); }
+
+  /* --- marquee ------------------------------------------------------------- */
+  .marquee {
+    display: flex;
+    width: max-content;
+    will-change: transform;
+  }
+
+  .marquee span {
+    padding-inline: 1.2rem;
+  }
+
+  /* --- transaction kit surface --------------------------------------------- */
+  .tx-surface {
+    --gl-tx-radius: 0;
+    border: 1px solid var(--line-strong);
+    padding: 1rem;
+    background: var(--bg-sunken);
+  }
+
+  .tx-surface * {
+    font-family: var(--font-mono-stack), monospace !important;
+    border-radius: 0 !important;
+  }
+
+  /* --- misc ---------------------------------------------------------------- */
+  .no-scroll {
+    overflow: hidden;
+  }
+
+  .link-underline {
+    position: relative;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .link-underline::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    bottom: -2px;
+    width: 100%;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: right;
+    transition: transform 0.4s var(--ease);
+  }
+
+  .link-underline:hover::after {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grain { animation: none; }
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@media print {
+  .grain, .no-print { display: none !important; }
+  body { background: #fff; color: #000; }
+}
