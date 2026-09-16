@@ -14,7 +14,7 @@ reasoned **evidence pack** they can attach to a takedown request.
 | **Network** | GenLayer Studio Next (Consensus v0.6) |
 | **Chain ID** | `61997` |
 | **RPC** | `https://studio-next.genlayer.com/api` |
-| **Contract** | [`0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17`](https://explorer-studio-dev.genlayer.com/address/0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17) |
+| **Contract** | [`0x23B867861a5366F1053239909b8E7f5220F0Af40`](https://explorer-studio-dev.genlayer.com/address/0x23B867861a5366F1053239909b8E7f5220F0Af40) |
 | **Track** | Onchain Justice |
 | **Contract source** | [`contracts/knockoff_bounty.py`](contracts/knockoff_bounty.py) |
 
@@ -101,13 +101,37 @@ timestamps the listing on a date the claimant did not choose, which is what make
 | Snapshot has no readable listing | `INSUFFICIENT_EVIDENCE`. Stake returned in full — a bad capture is a mistake, not an accusation. |
 | Validators time out or disagree | The round does not settle. State is unchanged; the claim is still `PENDING`. |
 | Claim upheld | Reporter is credited stake + share of the pool; the design's confirmed-copy counter increments. |
-| Withdrawal | The ledger is debited when the transaction is decided; the tokens move once it clears the appeal window (`on="finalized"`), the same shape as an optimistic-rollup exit. `npm run verify:payout` watches one settle end to end. |
 | Claim dismissed as `INDEPENDENT` | The stake moves to the design's bounty pool. A wrong accusation is not free. |
 
 ### Money never moves inside consensus
 
 Payouts are **pull-based**. `adjudicate` only credits a ledger; `withdraw` is a separate call that
 performs the single `emit_transfer`. A slow or disagreeing round can never strand value mid-transfer.
+
+### Known limitation: claiming is paused on Studio Next
+
+Escrow **in** works — the contract really holds the bounties and stakes, and you can see the balance
+on the explorer. Escrow **out** does not, and not because of anything in this contract:
+
+> Studio Next allots a transaction no message budget (`max_messages_per_tx: 0` in the live fee
+> policy). A transfer emitted from a contract is written to the receipt's `pending_transactions` and
+> then never dispatched.
+
+Verified, not assumed. `scripts/verify-payout.mjs` deploys a throwaway instance, escrows, credits and
+withdraws, then watches the balance. Observed across separate runs:
+
+| Attempt | Result |
+|---|---|
+| `emit_transfer(..., on="finalized")` | Transaction `FINISHED_WITH_RETURN`, finalized in ~60s, message queued, `triggered_transactions: []`, escrow untouched after 10 minutes |
+| `emit_transfer(..., on="decided")` | Identical |
+| Hand-built `messageAllocations` with a budget | Submission reverts with `InvalidFeeParams` |
+| `use_balance=True` with `fee_params` | `FINISHED_WITH_ERROR` — needs a permission the network does not grant |
+
+So `withdraw` **refuses to run**. It could debit the ledger and emit a transfer that looks fine on the
+receipt, and the claimant would be left with nothing; instead it reverts with an explanation and the
+credit stays claimable. The frontend says the same thing rather than offering a button that destroys
+a balance. The payout path itself is written, tested and one deleted `raise` away from working —
+see the comment in `withdraw`.
 
 ---
 
@@ -140,7 +164,7 @@ Point `.env.local` at the deployed instance:
 ```
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio-next.genlayer.com/api
 NEXT_PUBLIC_GENLAYER_CHAIN_ID=61997
-NEXT_PUBLIC_CONTRACT_ADDRESS=0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17
+NEXT_PUBLIC_CONTRACT_ADDRESS=0x23B867861a5366F1053239909b8E7f5220F0Af40
 ```
 
 Open <http://localhost:3000>. Connect MetaMask — the app offers to add and switch to Studio Next for
@@ -190,7 +214,7 @@ CLI scripts and must **not** be added to Vercel.
 
 Nothing here asks you to take our word for it.
 
-1. Open the [contract on the explorer](https://explorer-studio-dev.genlayer.com/address/0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17).
+1. Open the [contract on the explorer](https://explorer-studio-dev.genlayer.com/address/0x23B867861a5366F1053239909b8E7f5220F0Af40).
 2. Read the rubric off-chain: `get_rubric()` returns the exact constants the frontend displays.
 3. Read claim `C1`: the verdict `COPY`, score `9/12`, the four factor ratings and the model's
    rationale are all stored on-chain, alongside the snapshot URL it was derived from.
@@ -231,6 +255,8 @@ lib/genlayer/fee-profile.ts    measured fee allocations per method
   contract couples them.
 - `archive.ph` is in the admissible list but is currently behind a bot check that the GenLayer node
   cannot pass; `web.archive.org` snapshots work reliably and are what the demo uses.
+- Claiming a credited payout is blocked by the network, not by this contract — see
+  **Known limitation** above.
 
 ## Built with
 

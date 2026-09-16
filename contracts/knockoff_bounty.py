@@ -35,7 +35,8 @@ Determinism notes
   The verdict itself is DERIVED IN PYTHON from those factors, so validators
   compare a derived status, not free-form prose.
 * Payouts use a pull-based credit ledger: no value transfer happens inside
-  the consensus path.
+  the consensus path. See `withdraw` for a network limitation that currently
+  blocks the final hop out of the contract.
 """
 
 import json
@@ -653,20 +654,34 @@ class KnockoffBounty(gl.contract.Contract):
     # -- settlement --------------------------------------------------------
     @gl.public.write
     def withdraw(self) -> int:
-        """Pull-based payout. Value never moves inside the consensus path.
+        """Pull-based payout: the court credits a ledger, the recipient claims.
 
-        The transfer is emitted `on="finalized"`, so it lands once the
-        withdrawal has cleared the appeal window - the same shape as an exit
-        from an optimistic rollup. `on="decided"` would pay out sooner, but the
-        SDK warns against value transfers at that stage precisely because an
-        appeal can unwind them, and a court that can be made to pay twice is
-        worse than one that pays slowly. The ledger slot is zeroed before the
-        message is emitted, so the debit can never be replayed.
+        Known limitation on Studio Next (verified with scripts/verify-payout.mjs
+        on 2026-09-16): a transaction there is allotted no message budget, so the
+        transfer this emits is recorded on the receipt and never dispatched. It
+        is the same at `on="decided"`; supplying a hand-built message allocation
+        is rejected with InvalidFeeParams, and `use_balance=True` needs a
+        permission the network does not grant. Escrowing in works, the ledger and
+        the settlement arithmetic are exact, and this method is correct the day
+        the network dispatches messages - but until then it would zero a balance
+        the caller cannot actually receive, so it refuses to run rather than
+        quietly burning it. The frontend surfaces the same reason.
+
+        Remove the guard (and only the guard) once messages dispatch.
         """
         sender = gl.message.sender_address
         amount = int(self.credits.get(sender) or 0)
         if amount <= 0:
             raise gl.vm.UserError(ERROR_EXPECTED + " Nothing to withdraw")
+
+        raise gl.vm.UserError(
+            ERROR_EXPECTED
+            + " Withdrawals are disabled on this network: it dispatches no outbound"
+            + " messages, so the payout could not reach you. Your credit is safe and"
+            + " stays claimable. See README 'Known limitation'."
+        )
+
+        # Reachable once the guard above is removed.
         self.credits[sender] = gl.u256(0)
         gl.chain.Account(sender).emit_transfer(gl.u256(amount), on="finalized")
         return amount

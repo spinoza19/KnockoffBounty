@@ -192,15 +192,29 @@ def test_the_pool_drains_gracefully_across_repeat_offenders(
     assert contract.get_stats()["total_paid_atto"] == str(GEN * 15 // 2)
 
 
-def test_withdraw_empties_the_ledger(direct_vm, direct_deploy, direct_alice, direct_bob):
+def test_withdraw_refuses_rather_than_burning_a_credit(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    """Studio Next dispatches no outbound messages, so paying out would zero a
+    balance the caller cannot receive. The guard must fire before the debit."""
     contract = _setup(direct_vm, direct_deploy, direct_alice, direct_bob)
     mock_ruling(direct_vm)
     contract.adjudicate("C1")
 
     direct_vm.sender = direct_bob
-    assert contract.withdraw() == 6 * GEN
-    assert contract.get_credit(to_hex(direct_bob)) == "0"
+    with direct_vm.expect_revert("Withdrawals are disabled on this network"):
+        contract.withdraw()
 
+    # The credit survives the refusal - that is the whole point of the guard.
+    assert contract.get_credit(to_hex(direct_bob)) == str(6 * GEN)
+
+
+def test_withdraw_still_rejects_an_empty_ledger_first(
+    direct_vm, direct_deploy, direct_alice, direct_bob
+):
+    contract = _setup(direct_vm, direct_deploy, direct_alice, direct_bob)
+
+    direct_vm.sender = direct_charlie_free = direct_alice
     with direct_vm.expect_revert("Nothing to withdraw"):
         contract.withdraw()
 
