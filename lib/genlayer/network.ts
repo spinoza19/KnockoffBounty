@@ -51,7 +51,10 @@ export function createGenLayerNetworkConfig(
   return {
     chain,
     wallet: {
-      chainId: `0x${chainId.toString(16).toUpperCase()}`,
+      // EIP-3326/3085 chain ids must be lowercase hex. MetaMask compares the
+      // string, not the number, so "0xF22D" is not recognised as 0xf22d and the
+      // switch fails with "Unrecognized chain ID".
+      chainId: `0x${chainId.toString(16)}`,
       chainName,
       nativeCurrency: chain.nativeCurrency,
       rpcUrls: [rpcUrl],

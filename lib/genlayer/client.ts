@@ -149,16 +149,42 @@ export async function addGenLayerNetwork(): Promise<void> {
       params: [GENLAYER_NETWORK],
     });
   } catch (error: any) {
-    if (error.code === 4001) {
+    if (providerErrorCode(error) === 4001) {
       throw new Error("User rejected adding the network");
     }
-    throw new Error(`Failed to add GenLayer network: ${error.message}`);
+    throw new Error(`Failed to add GenLayer network: ${error?.message ?? error}`);
   }
 }
 
 /**
  * Switch to GenLayer network
  */
+/**
+ * Wallets do not report an unknown chain consistently. MetaMask sometimes
+ * returns a flat `code: 4902`, sometimes wraps it under
+ * `data.originalError.code`, and sometimes surfaces only the message. Reading
+ * one of those and ignoring the rest is why "add the network for me" silently
+ * stops working.
+ */
+function providerErrorCode(error: any): number | undefined {
+  const candidates = [
+    error?.code,
+    error?.data?.originalError?.code,
+    error?.data?.code,
+    error?.cause?.code,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "number") return candidate;
+  }
+  return undefined;
+}
+
+function isUnknownChainError(error: any): boolean {
+  if (providerErrorCode(error) === 4902) return true;
+  const message = String(error?.message ?? "").toLowerCase();
+  return message.includes("unrecognized chain") || message.includes("chain id");
+}
+
 export async function switchToGenLayerNetwork(): Promise<void> {
   const provider = getEthereumProvider();
 
@@ -166,19 +192,36 @@ export async function switchToGenLayerNetwork(): Promise<void> {
     throw new Error("MetaMask is not installed");
   }
 
-  try {
-    await provider.request({
+  const requestSwitch = () =>
+    provider.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: GENLAYER_CHAIN_ID_HEX }],
     });
+
+  try {
+    await requestSwitch();
   } catch (error: any) {
-    // If the chain is not added, add it
-    if (error.code === 4902) {
-      await addGenLayerNetwork();
-    } else if (error.code === 4001) {
+    if (providerErrorCode(error) === 4001) {
       throw new Error("User rejected switching the network");
-    } else {
-      throw new Error(`Failed to switch network: ${error.message}`);
+    }
+
+    if (!isUnknownChainError(error)) {
+      throw new Error(`Failed to switch network: ${error?.message ?? error}`);
+    }
+
+    // The wallet has never seen this chain. Add it, then switch again —
+    // most wallets switch on their own after adding, so a failure here is
+    // only worth reporting if we are still on the wrong chain.
+    await addGenLayerNetwork();
+    try {
+      await requestSwitch();
+    } catch (afterAdd: any) {
+      if (providerErrorCode(afterAdd) === 4001) {
+        throw new Error("User rejected switching the network");
+      }
+      if (!(await isOnGenLayerNetwork())) {
+        throw new Error(`Failed to switch network: ${afterAdd?.message ?? afterAdd}`);
+      }
     }
   }
 }
