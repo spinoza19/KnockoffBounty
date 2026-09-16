@@ -14,7 +14,7 @@ reasoned **evidence pack** they can attach to a takedown request.
 | **Network** | GenLayer Studio Next (Consensus v0.6) |
 | **Chain ID** | `61997` |
 | **RPC** | `https://studio-next.genlayer.com/api` |
-| **Contract** | [`0x19eAc0C7Ebdc9821555F515Aa99e342B62a66784`](https://explorer-studio-dev.genlayer.com/address/0x19eAc0C7Ebdc9821555F515Aa99e342B62a66784) |
+| **Contract** | [`0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17`](https://explorer-studio-dev.genlayer.com/address/0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17) |
 | **Track** | Onchain Justice |
 | **Contract source** | [`contracts/knockoff_bounty.py`](contracts/knockoff_bounty.py) |
 
@@ -101,6 +101,7 @@ timestamps the listing on a date the claimant did not choose, which is what make
 | Snapshot has no readable listing | `INSUFFICIENT_EVIDENCE`. Stake returned in full — a bad capture is a mistake, not an accusation. |
 | Validators time out or disagree | The round does not settle. State is unchanged; the claim is still `PENDING`. |
 | Claim upheld | Reporter is credited stake + share of the pool; the design's confirmed-copy counter increments. |
+| Withdrawal | The ledger is debited when the transaction is decided; the tokens move once it clears the appeal window (`on="finalized"`), the same shape as an optimistic-rollup exit. `npm run verify:payout` watches one settle end to end. |
 | Claim dismissed as `INDEPENDENT` | The stake moves to the design's bounty pool. A wrong accusation is not free. |
 
 ### Money never moves inside consensus
@@ -139,19 +140,23 @@ Point `.env.local` at the deployed instance:
 ```
 NEXT_PUBLIC_GENLAYER_RPC_URL=https://studio-next.genlayer.com/api
 NEXT_PUBLIC_GENLAYER_CHAIN_ID=61997
-NEXT_PUBLIC_CONTRACT_ADDRESS=0x19eAc0C7Ebdc9821555F515Aa99e342B62a66784
+NEXT_PUBLIC_CONTRACT_ADDRESS=0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17
 ```
 
 Open <http://localhost:3000>. Connect MetaMask — the app offers to add and switch to Studio Next for
-you. Append `?motion=off` to any URL to skip the entrance animations.
+you, and a bar under the hero will top your wallet up from the Studio faucet if it is empty, so you
+can try the whole flow without hunting for test tokens. Append `?motion=off` to any URL to skip the
+entrance animations.
 
 ### Deploying your own instance
 
 ```bash
 # .env.local needs DEPLOYER_PRIVATE_KEY (a burner — never a real key)
-node scripts/check.mjs            # compile the contract inside GenVM, print its schema
-npm run deploy:contract           # deploy, then write the address back into .env.local
-npm run seed                      # register 3 designs, file 2 claims, adjudicate both
+npm run check:contract     # compile the contract inside GenVM, print its public ABI
+npm run deploy:contract    # deploy, then write the address back into .env.local
+npm run seed               # register 3 designs, file 2 claims, adjudicate both
+npm run smoke              # one end-to-end pass over the live contract
+npm run verify:payout      # deploy a throwaway instance and watch a payout settle
 ```
 
 `scripts/check.mjs` is worth running before every deploy: it compiles the contract on a real GenVM
@@ -185,7 +190,7 @@ CLI scripts and must **not** be added to Vercel.
 
 Nothing here asks you to take our word for it.
 
-1. Open the [contract on the explorer](https://explorer-studio-dev.genlayer.com/address/0x19eAc0C7Ebdc9821555F515Aa99e342B62a66784).
+1. Open the [contract on the explorer](https://explorer-studio-dev.genlayer.com/address/0xe9B2F2Ea38C88179929FcA211c51C25ca607EE17).
 2. Read the rubric off-chain: `get_rubric()` returns the exact constants the frontend displays.
 3. Read claim `C1`: the verdict `COPY`, score `9/12`, the four factor ratings and the model's
    rationale are all stored on-chain, alongside the snapshot URL it was derived from.

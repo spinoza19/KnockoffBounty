@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Nav } from "@/components/Nav";
+import { FaucetBar } from "@/components/FaucetBar";
 import { Footer } from "@/components/Footer";
 import { Marquee } from "@/components/Marquee";
 import { Preloader } from "@/components/Preloader";
@@ -31,6 +32,7 @@ export default function Home() {
       <Nav />
       <main>
         <Hero ready={ready} />
+        <FaucetBar />
         <Marquee items={MARQUEE} />
         <Problem />
         <Marquee items={["Copy", "Derivative", "Independent", "Insufficient evidence"]} reverse speed={34} />

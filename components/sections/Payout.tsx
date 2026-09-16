@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { SubmitInput, TrackedStatus } from "@genlayer/transaction-kit-react";
 import { getContractAddress } from "@/lib/genlayer/client";
 import { useWallet } from "@/lib/genlayer/wallet";
@@ -21,6 +21,9 @@ export function Payout() {
   const contractAddress = getContractAddress();
 
   const credit = BigInt(stats?.credit_atto ?? "0");
+  // After a withdrawal the ledger reads zero but the tokens are still clearing
+  // the appeal window. Without this the card would look like the money vanished.
+  const [inFlight, setInFlight] = useState<bigint | null>(null);
 
   const tx = useMemo<SubmitInput | null>(() => {
     if (!contractAddress) return null;
@@ -35,7 +38,10 @@ export function Payout() {
   const handleDone = (status: TrackedStatus) => {
     refresh();
     if (status.successful !== false) {
-      success("Withdrawal submitted", { description: "The transfer settles on finalization." });
+      setInFlight(credit);
+      success("Withdrawal submitted", {
+        description: "The transfer is queued and settles once the transaction finalizes.",
+      });
       return;
     }
     toastError("Withdrawal did not settle", { description: "Your credit is untouched." });
@@ -55,11 +61,21 @@ export function Payout() {
             {stats?.upheld ?? 0} of {stats?.filed ?? 0} claims upheld
             {credit > 0n ? " · ready to withdraw" : " · nothing outstanding"}
           </p>
+          {inFlight !== null && credit === 0n && (
+            <p className="text-[12px] mt-2" style={{ color: "var(--verdict-derivative)" }}>
+              {gen(inFlight, 4)} withdrawn and queued — it reaches your wallet when the transaction
+              finalizes.
+            </p>
+          )}
         </div>
 
         <div className="md:w-[380px] w-full">
           {credit > 0n ? (
-            <TxRunner tx={tx} onDone={handleDone} />
+            <TxRunner
+              tx={tx}
+              onDone={handleDone}
+              note="The ledger is debited when this transaction is decided; the tokens move once it clears the appeal window, the same way an exit from an optimistic rollup does."
+            />
           ) : (
             <p className="text-[12px]" style={{ color: "var(--fg-faint)" }}>
               Find a knockoff and file it. Upheld claims credit your share of the design&apos;s bounty

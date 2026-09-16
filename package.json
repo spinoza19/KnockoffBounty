@@ -2,7 +2,7 @@
   "name": "knockoff-bounty",
   "version": "1.0.0",
   "private": true,
-  "description": "KnockoffBounty — on-chain design registry and AI-jury counterfeit court on GenLayer.",
+  "description": "KnockoffBounty \u2014 on-chain design registry and AI-jury counterfeit court on GenLayer.",
   "type": "module",
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,10 @@
     "start": "next start",
     "lint": "tsc --noEmit",
     "deploy:contract": "node scripts/deploy.mjs",
-    "seed": "node scripts/seed.mjs"
+    "seed": "node scripts/seed.mjs",
+    "check:contract": "node scripts/check.mjs",
+    "smoke": "node scripts/smoke.mjs",
+    "verify:payout": "node scripts/verify-payout.mjs"
   },
   "dependencies": {
     "@genlayer/transaction-kit": "0.1.0-rc.2",
